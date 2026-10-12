@@ -2,31 +2,31 @@
 
 ![SMWC Launcher](assets/cover.png)
 
-Launcher estilo consola para descargar, parchear y jugar hacks de Super Mario World desde [SMWCentral](https://www.smwcentral.net/), con el emulador Snes9x integrado. Hecho en Rust con [egui](https://github.com/emilk/egui) y pensado para usarse 100% con mando (también funciona con ratón y teclado).
+A console-style launcher to download, patch and play Super Mario World hacks from [SMWCentral](https://www.smwcentral.net/), with the Snes9x emulator built in. Written in Rust with [egui](https://github.com/emilk/egui) and designed to be used 100% with a gamepad (mouse and keyboard work too).
 
-- Biblioteca de hacks descargados y búsqueda en SMWCentral con filtros (nombre, dificultad, tipo, orden).
-- Descarga y parcheo automático (BPS / IPS) sobre tu ROM original de SMW (USA).
-- Emulador Snes9x integrado (libretro) con menú de pausa y guardado de partidas (`.srm`).
-- Interfaz en español e inglés.
+- Library of downloaded hacks and SMWCentral search with filters (name, difficulty, type, sort order).
+- Automatic download and patching (BPS / IPS) onto your original SMW (USA) ROM.
+- Built-in Snes9x emulator (libretro) with a pause menu and save files (`.srm`).
+- Spanish and English interface.
 
-## Capturas
+## Screenshots
 
-![Búsqueda en SMWCentral](assets/screenshots/search.png)
+![SMWCentral search](assets/screenshots/search.png)
 
-![Detalles de un hack](assets/screenshots/details.png)
+![Hack details](assets/screenshots/details.png)
 
-## Compilar
+## Building
 
-Requiere [Rust](https://rustup.rs/).
+Requires [Rust](https://rustup.rs/).
 
 ```sh
 cargo build --release
 ./target/release/smw-launcher
 ```
 
-### Núcleo Snes9x
+### Snes9x core
 
-El emulador integrado usa el núcleo libretro de Snes9x. Para compilarlo (requiere `g++` y `make`):
+The built-in emulator uses the Snes9x libretro core. To build it (requires `g++` and `make`):
 
 ```sh
 git clone --depth 1 https://github.com/snes9xgit/snes9x
@@ -35,32 +35,32 @@ mkdir -p ~/.local/share/smw-launcher/cores
 cp snes9x/libretro/snes9x_libretro.so ~/.local/share/smw-launcher/cores/
 ```
 
-También se detecta en `/usr/lib/libretro/` (paquete `libretro-snes9x`) o en `~/.config/retroarch/cores/`, y se puede elegir otro núcleo o un emulador externo en **Ajustes**.
+It is also detected in `/usr/lib/libretro/` (`libretro-snes9x` package) or `~/.config/retroarch/cores/`, and you can pick another core or an external emulator in **Settings**.
 
-## Controles
+## Controls
 
-| | Mando | Teclado |
+| | Gamepad | Keyboard |
 |---|---|---|
-| Moverse | Cruceta / stick | Flechas / Tab |
-| Aceptar / Atrás | A / B | Enter / Esc |
-| Cambiar pestaña | LB / RB | — |
-| Pausa en el juego | HOME o SELECT+START | Esc |
-| Botones SNES | Por posición | X=A, Z=B, S=X, A=Y, Q=L, W=R, Enter=Start, Retroceso=Select |
-| Pantalla completa | — | F11 |
+| Move | D-pad / stick | Arrows / Tab |
+| Select / Back | A / B | Enter / Esc |
+| Switch tab | LB / RB | — |
+| Pause in game | HOME or SELECT+START | Esc |
+| SNES buttons | By position | X=A, Z=B, S=X, A=Y, Q=L, W=R, Enter=Start, Backspace=Select |
+| Fullscreen | — | F11 |
 
-## Pruebas
+## Tests
 
 ```sh
 cargo test
-# Pruebas reales contra SMWCentral y el núcleo:
-SMW_ROM=/ruta/smw.sfc SMW_CORE=/ruta/snes9x_libretro.so cargo test -- --ignored
+# Real tests against SMWCentral and the core:
+SMW_ROM=/path/smw.sfc SMW_CORE=/path/snes9x_libretro.so cargo test -- --ignored
 ```
 
-## Créditos
+## Credits
 
-- Basado en la idea de [SMWCentral-Downloader-Patcher](https://github.com/iamtheratio/SMWCentral-Downloader-Patcher).
-- API de [SMWCentral](https://www.smwcentral.net/) (referencia: [smwc-api-python](https://github.com/R3tr0BoiDX/smwc-api-python)).
-- Fuente [smw-font](https://github.com/vvye/smw-font) de wye, licencia [CC BY-NC 4.0](assets/FONT-LICENSE.md); convertida a TTF con `assets/font2ttf.py`.
-- Emulador [Snes9x](https://github.com/snes9xgit/snes9x) (licencia propia, uso no comercial).
+- Based on the idea of [SMWCentral-Downloader-Patcher](https://github.com/iamtheratio/SMWCentral-Downloader-Patcher).
+- [SMWCentral](https://www.smwcentral.net/) API (reference: [smwc-api-python](https://github.com/R3tr0BoiDX/smwc-api-python)).
+- [smw-font](https://github.com/vvye/smw-font) by wye, licensed [CC BY-NC 4.0](assets/FONT-LICENSE.md); converted to TTF with `assets/font2ttf.py`.
+- [Snes9x](https://github.com/snes9xgit/snes9x) emulator (own license, non-commercial use).
 
-No se incluye ninguna ROM: necesitas tu propia copia de Super Mario World (USA).
+No ROM is included: you need your own copy of Super Mario World (USA).
