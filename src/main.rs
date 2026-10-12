@@ -951,7 +951,7 @@ impl eframe::App for App {
         egui::Panel::top("tabs").show(ui, |ui| {
             ui.add_space(10.);
             ui.horizontal(|ui| {
-                ui.label(RichText::new("SMW LAUNCHER").heading().color(YELLOW));
+                ui.add(egui::Image::new(egui::include_image!("../assets/logo.png")).fit_to_exact_size(egui::vec2(126., 48.)));
                 ui.add_space(32.);
                 chip(ui, "LB");
                 for (t, l) in [(Tab::Library, t("BIBLIOTECA", "LIBRARY")), (Tab::Search, t("BUSCAR", "SEARCH")), (Tab::Settings, t("AJUSTES", "SETTINGS"))] {
