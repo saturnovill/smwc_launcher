@@ -242,12 +242,20 @@ fn autofocus(flag: &mut bool, r: &egui::Response) {
     }
 }
 
+/// Hace scroll hasta el widget cuando recibe el foco. `gained_focus()` no sirve: egui mueve el
+/// foco con flechas/mando al final del frame y en el siguiente ya cuenta como foco "anterior".
+fn reveal(r: &egui::Response) {
+    let key = egui::Id::new("revealed_focus");
+    if r.has_focus() && r.ctx.data(|d| d.get_temp::<egui::Id>(key)) != Some(r.id) {
+        r.ctx.data_mut(|d| d.insert_temp(key, r.id));
+        r.scroll_to_me(None);
+    }
+}
+
 /// Botón que se desplaza a la vista al recibir foco (navegación con mando).
 fn btn(ui: &mut egui::Ui, b: impl egui::Widget) -> egui::Response {
     let r = ui.add(b);
-    if r.gained_focus() {
-        r.scroll_to_me(None);
-    }
+    reveal(&r);
     r
 }
 
@@ -288,9 +296,7 @@ fn hint(ui: &mut egui::Ui, key: &str, color: Color32, text: &str) {
 /// Portada de un hack en la cuadrícula.
 fn tile(ui: &mut egui::Ui, h: &Hack, badge: Option<(&str, Color32)>) -> egui::Response {
     let (rect, r) = ui.allocate_exact_size(vec2(TILE_W, TILE_IMG + 52.), Sense::click());
-    if r.gained_focus() {
-        r.scroll_to_me(None);
-    }
+    reveal(&r);
     let on = r.has_focus() || r.hovered();
     let p = ui.painter().clone();
     p.rect_filled(rect, 0., if on { BLUE } else { PANEL });
@@ -582,7 +588,9 @@ impl App {
         let mut go = false;
         // Filtros en columna a la izquierda y resultados a la derecha: arriba/abajo recorre
         // los filtros y derecha entra en la cuadrícula, sin saltos raros del foco.
-        ui.horizontal_top(|ui| {
+        // Todo el alto disponible: con `horizontal_top` el ScrollArea de resultados no tiene
+        // límite de alto, crece con el contenido y nunca hace scroll.
+        ui.allocate_ui_with_layout(ui.available_size(), egui::Layout::left_to_right(egui::Align::Min), |ui| {
             ui.vertical(|ui| {
                 ui.set_width(300.);
                 go |= self.filters(ui);
