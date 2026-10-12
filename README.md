@@ -9,6 +9,12 @@ Launcher estilo consola para descargar, parchear y jugar hacks de Super Mario Wo
 - Emulador Snes9x integrado (libretro) con menú de pausa y guardado de partidas (`.srm`).
 - Interfaz en español e inglés.
 
+## Capturas
+
+![Búsqueda en SMWCentral](assets/screenshots/search.png)
+
+![Detalles de un hack](assets/screenshots/details.png)
+
 ## Compilar
 
 Requiere [Rust](https://rustup.rs/).
