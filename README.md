@@ -1,5 +1,7 @@
 # smwc_launcher
 
+![SMWC Launcher](assets/cover.png)
+
 Launcher estilo consola para descargar, parchear y jugar hacks de Super Mario World desde [SMWCentral](https://www.smwcentral.net/), con el emulador Snes9x integrado. Hecho en Rust con [egui](https://github.com/emilk/egui) y pensado para usarse 100% con mando (también funciona con ratón y teclado).
 
 - Biblioteca de hacks descargados y búsqueda en SMWCentral con filtros (nombre, dificultad, tipo, orden).
