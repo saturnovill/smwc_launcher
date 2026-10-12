@@ -948,10 +948,11 @@ impl eframe::App for App {
                 self.osk = false;
             }
         }
-        egui::Panel::top("tabs").show(ui, |ui| {
-            ui.add_space(10.);
+        // left margin = item_spacing.x + the 32px gap after the logo, so both sides match
+        let frame = egui::Frame::side_top_panel(&ui.style()).inner_margin(egui::Margin { left: 44, right: 8, top: 12, bottom: 12 });
+        egui::Panel::top("tabs").frame(frame).show(ui, |ui| {
             ui.horizontal(|ui| {
-                ui.add(egui::Image::new(egui::include_image!("../assets/logo.png")).fit_to_exact_size(egui::vec2(126., 48.)));
+                ui.add(egui::Image::new(egui::include_image!("../assets/logo.png")).fit_to_exact_size(egui::vec2(168., 64.)));
                 ui.add_space(32.);
                 chip(ui, "LB");
                 for (t, l) in [(Tab::Library, t("BIBLIOTECA", "LIBRARY")), (Tab::Search, t("BUSCAR", "SEARCH")), (Tab::Settings, t("AJUSTES", "SETTINGS"))] {
@@ -961,7 +962,6 @@ impl eframe::App for App {
                 }
                 chip(ui, "RB");
             });
-            ui.add_space(10.);
         });
         egui::Panel::bottom("hints").show(ui, |ui| {
             ui.add_space(6.);
