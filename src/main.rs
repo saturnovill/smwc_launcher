@@ -1,3 +1,5 @@
+#![cfg_attr(windows, windows_subsystem = "windows")]
+
 mod emu;
 mod patch;
 mod smwc;
@@ -115,13 +117,17 @@ fn find_program(cmd: &str) -> Option<PathBuf> {
 }
 
 fn default_core() -> PathBuf {
+    let file = format!("snes9x_libretro.{}", std::env::consts::DLL_EXTENSION);
+    // Paquetes de release: el núcleo va en `cores/` junto al ejecutable.
+    let bundled = std::env::current_exe().ok().and_then(|e| Some(e.parent()?.join("cores")));
     let own = eframe::storage_dir("smw-launcher").unwrap_or_default().join("cores");
     let home = PathBuf::from(std::env::var_os("HOME").unwrap_or_default());
-    [own.clone(), "/usr/lib/libretro".into(), home.join(".config/retroarch/cores")]
+    bundled
         .into_iter()
-        .map(|d| d.join("snes9x_libretro.so"))
+        .chain([own.clone(), "/usr/lib/libretro".into(), home.join(".config/retroarch/cores")])
+        .map(|d| d.join(&file))
         .find(|p| p.is_file())
-        .unwrap_or(own.join("snes9x_libretro.so"))
+        .unwrap_or(own.join(file))
 }
 
 fn pretty(p: &Option<PathBuf>) -> String {
@@ -813,7 +819,7 @@ impl App {
             ui.label(RichText::new(t("EMULADOR INTEGRADO (NÚCLEO LIBRETRO)", "BUILT-IN EMULATOR (LIBRETRO CORE)")).color(DIM));
             ui.horizontal(|ui| {
                 if btn(ui, egui::Button::new(t("ELEGIR...", "CHOOSE..."))).clicked()
-                    && let Some(p) = rfd::FileDialog::new().add_filter(t("Núcleo libretro", "Libretro core"), &["so"]).pick_file()
+                    && let Some(p) = rfd::FileDialog::new().add_filter(t("Núcleo libretro", "Libretro core"), &[std::env::consts::DLL_EXTENSION]).pick_file()
                 {
                     self.cfg.core = p;
                 }

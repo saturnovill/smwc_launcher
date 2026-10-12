@@ -1,0 +1,53 @@
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-22.04 # glibc 2.35: runs on most current distros
+            name: linux
+            core: linux/x86_64/latest/snes9x_libretro.so.zip
+            exe: smw-launcher
+          - os: windows-latest
+            name: windows
+            core: windows/x86_64/latest/snes9x_libretro.dll.zip
+            exe: smw-launcher.exe
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y libasound2-dev libudev-dev pkg-config
+      - name: Build
+        run: cargo build --release
+        env:
+          # Windows: static CRT so no Visual C++ redistributable is needed.
+          RUSTFLAGS: ${{ runner.os == 'Windows' && '-C target-feature=+crt-static' || '' }}
+      - name: Package
+        run: |
+          d=smwc-launcher
+          mkdir -p $d/cores
+          cp target/release/${{ matrix.exe }} $d/
+          curl -fsSL -o core.zip https://buildbot.libretro.com/nightly/${{ matrix.core }}
+          unzip -o core.zip -d $d/cores
+          curl -fsSL -o $d/cores/SNES9X-LICENSE.txt https://raw.githubusercontent.com/snes9xgit/snes9x/master/LICENSE
+          cp assets/FONT-LICENSE.md $d/
+          if [ "$RUNNER_OS" = Windows ]; then
+            7z a smwc-launcher-windows.zip $d
+          else
+            tar czf smwc-launcher-linux.tar.gz $d
+          fi
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: smwc-launcher-${{ matrix.name }}.*

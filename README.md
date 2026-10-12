@@ -9,13 +9,22 @@ A console-style launcher to download, patch and play Super Mario World hacks fro
 - Built-in Snes9x emulator (libretro) with a pause menu and save files (`.srm`).
 - Spanish and English interface.
 
+## Download
+
+No Rust needed: grab the latest build, extract it and run the launcher. The Snes9x core is included.
+
+- **Linux (x86_64):** [smwc-launcher-linux.tar.gz](https://github.com/saturnovill/smwc_launcher/releases/latest/download/smwc-launcher-linux.tar.gz) → run `smwc-launcher/smw-launcher`
+- **Windows (x64):** [smwc-launcher-windows.zip](https://github.com/saturnovill/smwc_launcher/releases/latest/download/smwc-launcher-windows.zip) → run `smwc-launcher\smw-launcher.exe`
+
+All versions are on the [releases page](https://github.com/saturnovill/smwc_launcher/releases).
+
 ## Screenshots
 
 ![SMWCentral search](assets/screenshots/search.png)
 
 ![Hack details](assets/screenshots/details.png)
 
-## Building
+## Building from source
 
 Requires [Rust](https://rustup.rs/).
 

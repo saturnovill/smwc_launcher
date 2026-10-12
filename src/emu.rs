@@ -5,7 +5,6 @@ use libretro_sys as rs;
 use std::cell::RefCell;
 use std::collections::VecDeque;
 use std::ffi::{CString, c_char, c_uint, c_void};
-use std::os::unix::ffi::OsStrExt;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, AtomicU32, Ordering::Relaxed};
 use std::sync::{Arc, Mutex, mpsc};
@@ -233,10 +232,10 @@ fn run(core: &Path, rom: &Path, ctx: egui::Context, flags: Flags, tx: &mpsc::Sen
     let mem_size = sym!(lib, "retro_get_memory_size": (c_uint) -> usize);
 
     let audio = Audio::default();
-    let dir = CString::new(rom.parent().unwrap_or(Path::new(".")).as_os_str().as_bytes()).map_err(|e| e.to_string())?;
+    let dir = CString::new(rom.parent().unwrap_or(Path::new(".")).to_string_lossy().as_bytes()).map_err(|e| e.to_string())?;
     CB.set(Some(Cb { fmt: 0, frame, audio: audio.clone(), dir, ctx }));
     let data = std::fs::read(rom).map_err(|e| format!("{}: {e}", crate::t("No se pudo leer la ROM", "Could not read the ROM")))?;
-    let path = CString::new(rom.as_os_str().as_bytes()).map_err(|e| e.to_string())?;
+    let path = CString::new(rom.to_string_lossy().as_bytes()).map_err(|e| e.to_string())?;
     let info = rs::GameInfo { path: path.as_ptr(), data: data.as_ptr() as _, size: data.len(), meta: std::ptr::null() };
     // SAFETY: secuencia estándar de arranque libretro, todo en este hilo.
     let mut av: rs::SystemAvInfo = unsafe {
