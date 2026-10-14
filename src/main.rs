@@ -58,6 +58,8 @@ struct Config {
     /// Emulador externo opcional; si no está vacío se usa en lugar del integrado.
     external: String,
     lang: usize,
+    /// Índice en `SCALES` (0 = automático).
+    scale: usize,
     library: Vec<Entry>,
 }
 
@@ -114,6 +116,16 @@ fn find_program(cmd: &str) -> Option<PathBuf> {
         return prog.is_file().then(|| prog.to_path_buf());
     }
     std::env::split_paths(&std::env::var_os("PATH")?).map(|d| d.join(prog)).find(|p| p.is_file())
+}
+
+/// Tamaños de interfaz; 0 = automático según el tamaño de la ventana.
+const SCALES: [f32; 6] = [0., 0.5, 0.75, 1., 1.25, 1.5];
+
+/// Zoom automático: encoge la interfaz si la ventana mide menos de 1280x720 puntos
+/// (pantallas pequeñas o con escalado alto, como la ROG Ally), sin agrandarla nunca.
+fn auto_zoom(ctx: &egui::Context) -> f32 {
+    let size = ctx.content_rect().size() * ctx.zoom_factor();
+    (size.x / 1280.).min(size.y / 720.).clamp(0.5, 1.)
 }
 
 fn default_core() -> PathBuf {
@@ -822,6 +834,9 @@ impl App {
                 self.cfg.lang = lang;
             }
             ui.add_space(8.);
+            let scales = [t("Automático", "Automatic"), "50%", "75%", "100%", "125%", "150%"];
+            cycle(ui, t("TAMAÑO DE LA INTERFAZ", "INTERFACE SIZE"), &mut self.cfg.scale, &scales, 340.);
+            ui.add_space(8.);
             self.pickers(ui);
             ui.add_space(8.);
             ui.label(RichText::new(t("EMULADOR INTEGRADO (NÚCLEO LIBRETRO)", "BUILT-IN EMULATOR (LIBRETRO CORE)")).color(DIM));
@@ -948,6 +963,13 @@ impl eframe::App for App {
             let d = if ctx.memory(|m| m.focused().is_none()) { egui::FocusDirection::Next } else { d };
             ctx.memory_mut(|m| m.move_focus(d));
         }
+        let zoom = match SCALES.get(self.cfg.scale) {
+            Some(&z) if z > 0. => z,
+            _ => auto_zoom(&ctx),
+        };
+        if (ctx.zoom_factor() - zoom).abs() > 0.01 {
+            ctx.set_zoom_factor(zoom);
+        }
         if ui.input(|i| i.key_pressed(Key::F11)) {
             let fs = ui.input(|i| i.viewport().fullscreen.unwrap_or(false));
             ctx.send_viewport_cmd(egui::ViewportCommand::Fullscreen(!fs));
@@ -975,6 +997,11 @@ impl eframe::App for App {
                     }
                 }
                 chip(ui, "RB");
+                ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                    if btn(ui, egui::Button::new(t("SALIR", "EXIT"))).clicked() {
+                        ui.ctx().send_viewport_cmd(egui::ViewportCommand::Close);
+                    }
+                });
             });
         });
         egui::Panel::bottom("hints").show(ui, |ui| {
