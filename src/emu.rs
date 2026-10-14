@@ -164,22 +164,23 @@ pub struct Emu {
     paused: Arc<AtomicBool>,
     reset: Arc<AtomicBool>,
     stop: Arc<AtomicBool>,
+    save_state: Arc<AtomicBool>,
     thread: Option<JoinHandle<()>>,
 }
 
 impl Emu {
     pub fn start(core: PathBuf, rom: PathBuf, ctx: egui::Context) -> Result<Emu, String> {
         let frame = Frame::default();
-        let [paused, reset, stop] = [(); 3].map(|_| Arc::new(AtomicBool::new(false)));
+        let [paused, reset, stop, save_state] = [(); 4].map(|_| Arc::new(AtomicBool::new(false)));
         let (tx, rx) = mpsc::channel();
-        let flags = (frame.clone(), paused.clone(), reset.clone(), stop.clone());
+        let flags = (frame.clone(), paused.clone(), reset.clone(), stop.clone(), save_state.clone());
         let thread = std::thread::spawn(move || {
             if let Err(e) = run(&core, &rom, ctx, flags, &tx) {
                 tx.send(Err(e)).ok();
             }
         });
         let aspect = rx.recv().map_err(|_| crate::t("El emulador se cerró inesperadamente", "The emulator closed unexpectedly").to_string())??;
-        Ok(Emu { frame, aspect, paused, reset, stop, thread: Some(thread) })
+        Ok(Emu { frame, aspect, paused, reset, stop, save_state, thread: Some(thread) })
     }
 
     pub fn set_paused(&self, p: bool) {
@@ -188,6 +189,11 @@ impl Emu {
 
     pub fn reset(&self) {
         self.reset.store(true, Relaxed);
+    }
+
+    /// Al cerrarse guarda un estado (`<rom>.state`) que se carga solo en el próximo arranque.
+    pub fn save_state_on_exit(&self) {
+        self.save_state.store(true, Relaxed);
     }
 }
 
@@ -208,10 +214,10 @@ macro_rules! sym {
     };
 }
 
-type Flags = (Frame, Arc<AtomicBool>, Arc<AtomicBool>, Arc<AtomicBool>);
+type Flags = (Frame, Arc<AtomicBool>, Arc<AtomicBool>, Arc<AtomicBool>, Arc<AtomicBool>);
 
 fn run(core: &Path, rom: &Path, ctx: egui::Context, flags: Flags, tx: &mpsc::Sender<Result<f32, String>>) -> Result<(), String> {
-    let (frame, paused, reset, stop) = flags;
+    let (frame, paused, reset, stop, save_state) = flags;
     // SAFETY: cargar el núcleo ejecuta sus constructores; es la librería que eligió el usuario.
     let lib = unsafe { libloading::Library::new(core) }
         .map_err(|e| format!("{} {}: {e}", crate::t("No se pudo cargar el núcleo", "Could not load the core"), core.display()))?;
@@ -230,6 +236,9 @@ fn run(core: &Path, rom: &Path, ctx: egui::Context, flags: Flags, tx: &mpsc::Sen
     let retro_reset = sym!(lib, "retro_reset": ());
     let mem_data = sym!(lib, "retro_get_memory_data": (c_uint) -> *mut c_void);
     let mem_size = sym!(lib, "retro_get_memory_size": (c_uint) -> usize);
+    let state_size = sym!(lib, "retro_serialize_size": () -> usize);
+    let serialize = sym!(lib, "retro_serialize": (*mut c_void, usize) -> bool);
+    let unserialize = sym!(lib, "retro_unserialize": (*const c_void, usize) -> bool);
 
     let audio = Audio::default();
     let dir = CString::new(rom.parent().unwrap_or(Path::new(".")).to_string_lossy().as_bytes()).map_err(|e| e.to_string())?;
@@ -272,6 +281,14 @@ fn run(core: &Path, rom: &Path, ctx: egui::Context, flags: Flags, tx: &mpsc::Sen
         s[..n].copy_from_slice(&saved[..n]);
     }
 
+    // Estado de "guardar y salir": se retoma justo donde se dejó.
+    let state = rom.with_extension("state");
+    if let Ok(st) = std::fs::read(&state)
+        && !unsafe { unserialize(st.as_ptr() as _, st.len()) }
+    {
+        eprintln!("No se pudo cargar {}", state.display());
+    }
+
     let g = &av.geometry;
     tx.send(Ok(if g.aspect_ratio > 0. { g.aspect_ratio } else { 4. / 3. })).ok();
     let stream = open_audio(audio.clone(), av.timing.sample_rate);
@@ -310,6 +327,16 @@ fn run(core: &Path, rom: &Path, ctx: egui::Context, flags: Flags, tx: &mpsc::Sen
         }
     }
     save();
+    if save_state.load(Relaxed) {
+        let mut st = vec![0u8; unsafe { state_size() }];
+        if unsafe { serialize(st.as_mut_ptr() as _, st.len()) } {
+            if let Err(e) = std::fs::write(&state, &st) {
+                eprintln!("No se pudo guardar {}: {e}", state.display());
+            }
+        } else {
+            eprintln!("El núcleo no pudo guardar el estado");
+        }
+    }
     drop(stream);
     unsafe {
         unload_game();
@@ -333,8 +360,13 @@ mod tests {
         std::thread::sleep(std::time::Duration::from_secs(2));
         let img = emu.frame.lock().unwrap().take().expect("sin video");
         assert_eq!(img.size, [256, 224]);
+        emu.save_state_on_exit();
         drop(emu);
         assert!(rom.with_extension("srm").is_file(), "no guardó la SRAM");
+        let st = std::fs::metadata(rom.with_extension("state")).expect("no guardó el estado");
+        assert!(st.len() > 0);
+        // Arrancar de nuevo carga el estado sin errores.
+        drop(super::Emu::start(std::env::var("SMW_CORE").unwrap().into(), rom.clone(), Default::default()).unwrap());
         std::fs::remove_dir_all(dir).ok();
     }
 }

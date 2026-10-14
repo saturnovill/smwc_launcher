@@ -6,7 +6,8 @@ A console-style launcher to download, patch and play Super Mario World hacks fro
 
 - Library of downloaded hacks and SMWCentral search with filters (name, difficulty, type, sort order).
 - Automatic download and patching (BPS / IPS) onto your original SMW (USA) ROM.
-- Built-in Snes9x emulator (libretro) with a pause menu and save files (`.srm`).
+- Built-in Snes9x emulator (libretro) with a pause menu and save files (`.srm`). **Save and quit** stores a save state that is loaded automatically the next time you play.
+- The original Super Mario World is always in the library (a copy of your ROM).
 - Spanish and English interface.
 
 ## Download

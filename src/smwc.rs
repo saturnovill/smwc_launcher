@@ -22,7 +22,7 @@ pub const KINDS: [(&str, &str); 6] = [
 /// Valores de orden de la API (las etiquetas traducidas están en la UI).
 pub const SORTS: [&str; 4] = ["date", "downloads", "rating", "name"];
 
-#[derive(Deserialize, Serialize, Clone)]
+#[derive(Deserialize, Serialize, Clone, Default)]
 pub struct Hack {
     pub id: u64,
     pub name: String,

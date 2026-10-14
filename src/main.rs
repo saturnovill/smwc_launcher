@@ -128,6 +128,13 @@ fn auto_zoom(ctx: &egui::Context) -> f32 {
     (size.x / 1280.).min(size.y / 720.).clamp(0.5, 1.)
 }
 
+const ORIGINAL_IMG: &str = "bytes://original.png";
+
+/// Entrada fija de la biblioteca: la SMW original (una copia de la ROM elegida).
+fn original() -> Hack {
+    Hack { name: "Super Mario World".into(), images: vec![ORIGINAL_IMG.into()], ..Default::default() }
+}
+
 fn default_core() -> PathBuf {
     let file = format!("snes9x_libretro.{}", std::env::consts::DLL_EXTENSION);
     // Paquetes de release: el núcleo va en `cores/` junto al ejecutable.
@@ -339,6 +346,7 @@ impl App {
     fn new(cc: &eframe::CreationContext) -> Self {
         setup_style(&cc.egui_ctx);
         egui_extras::install_image_loaders(&cc.egui_ctx);
+        cc.egui_ctx.include_bytes(ORIGINAL_IMG, include_bytes!("../assets/original.png"));
         let mut cfg: Config = cc.storage.and_then(|s| eframe::get_value(s, eframe::APP_KEY)).unwrap_or_default();
         if !cfg.core.is_file() {
             cfg.core = default_core();
@@ -440,6 +448,18 @@ impl App {
         }
     }
 
+    fn play_original(&mut self) {
+        let (Some(rom), Some(dest)) = (&self.cfg.rom, &self.cfg.dest) else { return };
+        let copy = dest.join("Super Mario World (Original).sfc");
+        if !copy.is_file()
+            && let Err(e) = smwc::clean_rom(rom).and_then(|d| std::fs::write(&copy, d).map_err(|e| e.to_string()))
+        {
+            self.status = e;
+            return;
+        }
+        self.play(&copy);
+    }
+
     fn set_paused(&mut self, p: bool) {
         if let Some(e) = &self.emu {
             e.set_paused(p);
@@ -528,32 +548,31 @@ impl App {
     }
 
     fn library(&mut self, ui: &mut egui::Ui) {
-        if self.cfg.library.is_empty() {
-            ui.vertical_centered(|ui| {
-                ui.add_space(80.);
-                ui.label(RichText::new(t("TU BIBLIOTECA ESTÁ VACÍA", "YOUR LIBRARY IS EMPTY")).heading().color(YELLOW));
-                ui.label(t("Busca hacks en SMWCentral y añádelos aquí.", "Find hacks on SMWCentral and add them here."));
-                ui.add_space(16.);
-                let r = big(ui, t("IR A BUSCAR", "GO TO SEARCH"));
-                autofocus(&mut self.focus_first, &r);
-                if r.clicked() {
-                    self.go(Tab::Search);
-                }
-            });
-            return;
-        }
-        let mut open = None;
+        let (mut open, mut play_original) = (None, false);
         egui::ScrollArea::vertical().show(ui, |ui| {
             ui.horizontal_wrapped(|ui| {
+                let r = tile(ui, &original(), Some(("ORIGINAL", RED)));
+                autofocus(&mut self.focus_first, &r);
+                play_original = r.clicked();
                 for e in &self.cfg.library {
                     let r = tile(ui, &e.hack, None);
-                    autofocus(&mut self.focus_first, &r);
                     if r.clicked() {
                         open = Some((e.hack.clone(), r.id));
                     }
                 }
             });
+            if self.cfg.library.is_empty() {
+                ui.add_space(24.);
+                ui.label(t("Busca hacks en SMWCentral y añádelos aquí.", "Find hacks on SMWCentral and add them here."));
+                ui.add_space(8.);
+                if big(ui, t("IR A BUSCAR", "GO TO SEARCH")).clicked() {
+                    self.go(Tab::Search);
+                }
+            }
         });
+        if play_original {
+            self.play_original();
+        }
         if let Some((h, id)) = open {
             self.open_details(h, id);
         }
@@ -915,7 +934,7 @@ impl App {
             ui.vertical_centered(|ui| {
                 ui.label(RichText::new(t("PAUSA", "PAUSED")).heading().color(YELLOW));
                 ui.add_space(8.);
-                for (i, t) in [t("CONTINUAR", "RESUME"), t("REINICIAR", "RESET"), t("VOLVER A LA BIBLIOTECA", "BACK TO LIBRARY")].into_iter().enumerate() {
+                for (i, t) in [t("CONTINUAR", "RESUME"), t("REINICIAR", "RESET"), t("GUARDAR Y SALIR", "SAVE AND QUIT")].into_iter().enumerate() {
                     let r = big(ui, t);
                     autofocus(&mut self.focus_first, &r);
                     if r.clicked() {
@@ -936,7 +955,12 @@ impl App {
                 }
                 self.set_paused(false);
             }
-            3 => self.stop_game(),
+            3 => {
+                if let Some(e) = &self.emu {
+                    e.save_state_on_exit();
+                }
+                self.stop_game();
+            }
             _ => {}
         }
     }
@@ -1013,7 +1037,7 @@ impl eframe::App for App {
                 chip(ui, "RB");
                 ui.label(t("PESTAÑAS", "TABS"));
                 ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                    ui.label(RichText::new(&self.status).color(DIM));
+                    ui.add(egui::Label::new(RichText::new(&self.status).color(DIM)).truncate());
                 });
             });
             ui.add_space(6.);
